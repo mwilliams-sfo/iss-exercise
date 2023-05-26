@@ -1,4 +1,6 @@
 <resources>
     <string name="app_name">ISS</string>
     <string name="distance_to_nadir">Distance to nadir:</string>
+    <string name="no_data">No data</string>
+    <string name="distance_km">%d km</string>
 </resources>

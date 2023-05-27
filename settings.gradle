@@ -12,5 +12,5 @@ dependencyResolutionManagement {
         mavenCentral()
     }
 }
-rootProject.name = "Chase"
+rootProject.name = "ISS"
 include ':app'

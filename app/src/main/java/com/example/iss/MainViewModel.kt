@@ -1,4 +1,4 @@
-package com.example.chase
+package com.example.iss
 
 import android.location.Location
 import androidx.core.location.LocationListenerCompat
@@ -7,7 +7,7 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.liveData
-import com.example.chase.api.iss.ISSApi
+import com.example.iss.api.iss.ISSApi
 import kotlinx.coroutines.delay
 
 class MainViewModel(

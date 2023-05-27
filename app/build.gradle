@@ -4,11 +4,11 @@ plugins {
 }
 
 android {
-    namespace 'com.example.chase'
+    namespace 'com.example.iss'
     compileSdk 33
 
     defaultConfig {
-        applicationId "com.example.chase"
+        applicationId "com.example.iss"
         minSdk 24
         targetSdk 33
         versionCode 1

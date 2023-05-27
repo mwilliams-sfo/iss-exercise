@@ -1,6 +1,6 @@
-package com.example.chase.api.iss
+package com.example.iss.api.iss
 
-import com.example.chase.api.iss.model.response.ISSNowResponse
+import com.example.iss.api.iss.model.response.ISSNowResponse
 import retrofit2.http.GET
 
 interface ISSApi {

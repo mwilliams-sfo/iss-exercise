@@ -1,6 +1,6 @@
-package com.example.chase.api.iss.model.response
+package com.example.iss.api.iss.model.response
 
-import com.example.chase.api.iss.model.Position
+import com.example.iss.api.iss.model.Position
 import com.google.gson.annotations.SerializedName
 
 data class ISSNowResponse(

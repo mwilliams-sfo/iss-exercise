@@ -4,4 +4,5 @@
     <string name="no_data">No data</string>
     <string name="distance_km">%d km</string>
     <string name="astronaut_list_headline">Astronauts on board</string>
+    <string name="astronauts_unavailable">Unavailable</string>
 </resources>

@@ -6,6 +6,7 @@ import androidx.core.location.LocationListenerCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.LiveDataScope
 import androidx.lifecycle.MediatorLiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
@@ -22,15 +23,7 @@ class MainViewModel(
     private val _gpsLocation = MutableLiveData<Location>()
     internal val gpsLocation = liveData { emitSource(_gpsLocation) }
 
-    internal val issLocation = liveData {
-        while (true) {
-            if (resumed) {
-                val location = getIssLocation()
-                location?.let { emit(it) }
-            }
-            delay(5000L)
-        }
-    }
+    internal val issLocation = liveData {pollIssLocation() }
 
     private val _nadirDistance = MediatorLiveData<Float>().apply {
         addSource(gpsLocation) { gpsLocation ->
@@ -43,16 +36,8 @@ class MainViewModel(
     val nadirDistance = liveData { emitSource(_nadirDistance) }
 
     val astronauts = liveData {
-        try {
-            val response = issApi.astros()
-            emit(
-                response.people
-                    .filter { it.craft == "ISS" }
-                    .map { it.name }
-            )
-        } catch (ex: Exception) {
-            Log.e(TAG, "Astronaut request failed", ex)
-        }
+        val names = getAstronautNames()
+        emit(names)
     }
 
     override fun onStateChanged(source: LifecycleOwner, event: Lifecycle.Event) {
@@ -61,6 +46,20 @@ class MainViewModel(
 
     override fun onLocationChanged(location: Location) {
         _gpsLocation.value = location
+    }
+
+    private suspend fun LiveDataScope<Location>.pollIssLocation() {
+        while (true) {
+            if (resumed) {
+                try {
+                    val location = getIssLocation()
+                    location?.let { emit(it) }
+                } catch (ex: Exception) {
+                    Log.e(TAG, "Location request failed", ex)
+                }
+            }
+            delay(5000L)
+        }
     }
 
     private suspend fun getIssLocation(): Location? =
@@ -79,6 +78,16 @@ class MainViewModel(
         if (location1 == null || location2 == null) return null
         return location1.distanceTo(location2)
     }
+
+    private suspend fun getAstronautNames() =
+        try {
+            issApi.astros().people
+                .filter { it.craft == "ISS" }
+                .map { it.name }
+        } catch (ex: Exception) {
+            Log.e(TAG, "Astronaut request failed", ex)
+            null
+        }
 
     class Factory(private val issApi: ISSApi) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")

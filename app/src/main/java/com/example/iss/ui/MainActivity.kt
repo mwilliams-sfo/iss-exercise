@@ -52,14 +52,17 @@ class MainActivity : AppCompatActivity() {
             adapter = astronautAdapter
         }
         viewModel.astronauts.observe(this) { names ->
-            astronautAdapter.update(names)
+            if (names.isNullOrEmpty()) {
+                astronautAdapter.update(listOf(getString(R.string.astronauts_unavailable)))
+            } else {
+                astronautAdapter.update(names)
+            }
         }
     }
 
     override fun onResume() {
         super.onResume()
         startLocationUpdates()
-
     }
 
     override fun onPause() {

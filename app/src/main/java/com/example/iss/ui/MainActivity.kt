@@ -1,4 +1,4 @@
-package com.example.iss
+package com.example.iss.ui
 
 import android.Manifest.permission.ACCESS_COARSE_LOCATION
 import android.Manifest.permission.ACCESS_FINE_LOCATION
@@ -14,6 +14,9 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat.checkSelfPermission
 import androidx.core.location.LocationManagerCompat
 import androidx.core.location.LocationRequestCompat
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
+import com.example.iss.R
 import com.example.iss.api.iss.ISSApi
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
@@ -35,10 +38,22 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+        lifecycle.addObserver(viewModel)
+
         permissionRequest = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {}
         locationManager = getSystemService(LOCATION_SERVICE) as? LocationManager
 
         viewModel.nadirDistance.observe(this, ::updateNadirDistance)
+
+        val astronautAdapter = StringArrayAdapter()
+        val astronautList = findViewById<RecyclerView>(R.id.astronaut_list)
+        astronautList.run {
+            layoutManager = LinearLayoutManager(this@MainActivity)
+            adapter = astronautAdapter
+        }
+        viewModel.astronauts.observe(this) { names ->
+            astronautAdapter.update(names)
+        }
     }
 
     override fun onResume() {

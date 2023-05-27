@@ -1,7 +1,11 @@
-package com.example.iss
+package com.example.iss.ui
 
 import android.location.Location
+import android.util.Log
 import androidx.core.location.LocationListenerCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.MediatorLiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
@@ -12,14 +16,18 @@ import kotlinx.coroutines.delay
 
 class MainViewModel(
     private val issApi: ISSApi
-) : ViewModel(), LocationListenerCompat {
+) : ViewModel(), LifecycleEventObserver, LocationListenerCompat {
+    private var resumed = false
+
     private val _gpsLocation = MutableLiveData<Location>()
     internal val gpsLocation = liveData { emitSource(_gpsLocation) }
 
     internal val issLocation = liveData {
         while (true) {
-            val location = getIssLocation()
-            location?.let { emit(it) }
+            if (resumed) {
+                val location = getIssLocation()
+                location?.let { emit(it) }
+            }
             delay(5000L)
         }
     }
@@ -34,6 +42,23 @@ class MainViewModel(
     }
     val nadirDistance = liveData { emitSource(_nadirDistance) }
 
+    val astronauts = liveData {
+        try {
+            val response = issApi.astros()
+            emit(
+                response.people
+                    .filter { it.craft == "ISS" }
+                    .map { it.name }
+            )
+        } catch (ex: Exception) {
+            Log.e(TAG, "Astronaut request failed", ex)
+        }
+    }
+
+    override fun onStateChanged(source: LifecycleOwner, event: Lifecycle.Event) {
+        resumed = (source.lifecycle.currentState >= Lifecycle.State.RESUMED)
+    }
+
     override fun onLocationChanged(location: Location) {
         _gpsLocation.value = location
     }
@@ -46,6 +71,7 @@ class MainViewModel(
                 longitude = position.longitude
             }
         } catch (ex: Exception) {
+            Log.e(TAG, "ISS location request failed", ex)
             null
         }
 
@@ -58,5 +84,9 @@ class MainViewModel(
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T =
             MainViewModel(issApi) as T
+    }
+
+    companion object {
+        const val TAG = "MainViewModel"
     }
 }

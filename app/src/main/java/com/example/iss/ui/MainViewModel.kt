@@ -12,18 +12,26 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.liveData
+import androidx.lifecycle.viewModelScope
 import com.example.iss.api.iss.ISSApi
+import com.example.iss.api.iss.model.response.ISSNowResponse
+import com.example.iss.db.AppDatabase
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import com.example.iss.db.entity.Position as DBPosition
 
 class MainViewModel(
-    private val issApi: ISSApi
+    private val issApi: ISSApi,
+    private val database: AppDatabase
 ) : ViewModel(), LifecycleEventObserver, LocationListenerCompat {
+    private val locationDao = database.positionDao()
     private var resumed = false
 
     private val _gpsLocation = MutableLiveData<Location>()
     internal val gpsLocation = liveData { emitSource(_gpsLocation) }
 
-    val issPosition = liveData {pollIssLocation() }
+    val issPosition = liveData { pollIssPosition() }
 
     private val _nadirDistance = MediatorLiveData<Float>().apply {
         addSource(gpsLocation) { gpsLocation ->
@@ -40,6 +48,8 @@ class MainViewModel(
         emit(names)
     }
 
+    val positionLog = locationDao.getAll()
+
     override fun onStateChanged(source: LifecycleOwner, event: Lifecycle.Event) {
         resumed = (source.lifecycle.currentState >= Lifecycle.State.RESUMED)
     }
@@ -48,31 +58,38 @@ class MainViewModel(
         _gpsLocation.value = location
     }
 
-    private suspend fun LiveDataScope<Location>.pollIssLocation() {
+    private suspend fun LiveDataScope<Location>.pollIssPosition() {
         while (true) {
             if (resumed) {
                 try {
-                    val location = getIssLocation()
-                    location?.let { emit(it) }
+                    val issNow = issApi.issNow()
+                    emit(
+                        Location("").apply {
+                            latitude = issNow.issPosition.latitude
+                            longitude = issNow.issPosition.longitude
+                        }
+                    )
+                    logIssPosition(issNow)
                 } catch (ex: Exception) {
-                    Log.e(TAG, "Location request failed", ex)
+                    Log.e(TAG, "ISS position request failed", ex)
                 }
             }
             delay(5000L)
         }
     }
 
-    private suspend fun getIssLocation(): Location? =
-        try {
-            val position = issApi.issNow().issPosition
-            Location("").apply {
-                latitude = position.latitude
-                longitude = position.longitude
-            }
-        } catch (ex: Exception) {
-            Log.e(TAG, "ISS location request failed", ex)
-            null
+    private fun logIssPosition(response: ISSNowResponse) {
+        viewModelScope.launch(Dispatchers.IO) {
+            database.positionDao().insert(
+                DBPosition(
+                    id = 0,
+                    time = response.timestamp,
+                    latitude = response.issPosition.latitude,
+                    longitude = response.issPosition.longitude
+                )
+            )
         }
+    }
 
     private fun locationsDistance(location1: Location?, location2: Location?): Float? {
         if (location1 == null || location2 == null) return null
@@ -89,10 +106,13 @@ class MainViewModel(
             null
         }
 
-    class Factory(private val issApi: ISSApi) : ViewModelProvider.Factory {
+    class Factory(
+        private val issApi: ISSApi,
+        private val database: AppDatabase
+    ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T =
-            MainViewModel(issApi) as T
+            MainViewModel(issApi, database) as T
     }
 
     companion object {

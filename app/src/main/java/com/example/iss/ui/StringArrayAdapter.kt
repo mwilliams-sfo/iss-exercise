@@ -6,7 +6,7 @@ import android.view.ViewGroup
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 
-class StringArrayAdapter() : RecyclerView.Adapter<StringArrayAdapter.ViewHolder>() {
+class StringArrayAdapter : RecyclerView.Adapter<StringArrayAdapter.ViewHolder>() {
     private val items = mutableListOf<String>()
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder =
@@ -23,14 +23,16 @@ class StringArrayAdapter() : RecyclerView.Adapter<StringArrayAdapter.ViewHolder>
         textView.text = items[position]
     }
 
-    fun update(items: List<String>) =
+    fun update(items: List<String>) {
+        val formerSize = this.items.size
         this.items.run {
-            val formerSize = size
             clear()
             addAll(items)
-            notifyItemRangeRemoved(0, formerSize)
-            notifyItemRangeInserted(0, size)
         }
+        notifyItemRangeChanged(0, minOf(formerSize, items.size))
+        notifyItemRangeInserted(formerSize, maxOf(0, items.size - formerSize))
+        notifyItemRangeRemoved(items.size, maxOf(0, formerSize - items.size))
+    }
 
     class ViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView)
 }

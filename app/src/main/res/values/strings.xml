@@ -7,4 +7,7 @@
     <string name="astronauts_unavailable">Unavailable</string>
     <string name="show_on_map">Show on map</string>
     <string name="iss_map_label">ISS position</string>
+    <string name="log_heading_time">Time (EST)</string>
+    <string name="log_heading_position">Position</string>
+    <string name="coordinates">%.4f, %.4f</string>
 </resources>

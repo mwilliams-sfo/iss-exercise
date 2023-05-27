@@ -20,10 +20,16 @@ import androidx.core.location.LocationManagerCompat
 import androidx.core.location.LocationRequestCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import androidx.room.Room
 import com.example.iss.R
 import com.example.iss.api.iss.ISSApi
+import com.example.iss.db.AppDatabase
+import com.example.iss.db.entity.Position
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
+import java.time.Clock
+import java.time.Instant
+import java.time.ZoneId
 import kotlin.math.roundToInt
 
 class MainActivity : AppCompatActivity() {
@@ -32,8 +38,17 @@ class MainActivity : AppCompatActivity() {
         .addConverterFactory(GsonConverterFactory.create())
         .build()
         .create(ISSApi::class.java)
+
+    private val database by lazy {
+        Room.databaseBuilder(
+            context = applicationContext,
+            klass = AppDatabase::class.java,
+            name = "app.db"
+        ).build()
+    }
+
     private val viewModel: MainViewModel by viewModels {
-        MainViewModel.Factory(issApi)
+        MainViewModel.Factory(issApi, database)
     }
 
     private lateinit var permissionRequest: ActivityResultLauncher<Array<String>>
@@ -50,7 +65,9 @@ class MainActivity : AppCompatActivity() {
 
         viewModel.nadirDistance.observe(this, ::updateNadirDistance)
         val mapButton = findViewById<AppCompatImageButton>(R.id.show_on_map)
-        viewModel.issPosition.observe(this) { location -> mapButton.isEnabled = (location != null) }
+        viewModel.issPosition.observe(this) { position ->
+            mapButton.isEnabled = (position != null)
+        }
         mapButton.setOnClickListener {
             viewModel.issPosition.value?.let { showLocationOnMap(it, getString(R.string.iss_map_label)) }
         }
@@ -67,6 +84,18 @@ class MainActivity : AppCompatActivity() {
             } else {
                 astronautAdapter.update(names)
             }
+        }
+
+        val logAdapter = PositionLogAdapter(
+            timeZone = ZoneId.of("America/New_York").rules.getStandardOffset(Instant.now())
+        )
+        val positionLog = findViewById<RecyclerView>(R.id.position_log)
+        positionLog.run {
+            layoutManager = LinearLayoutManager(this@MainActivity)
+            adapter = logAdapter
+        }
+        viewModel.positionLog.observe(this) { positions ->
+            logAdapter.update(positions?.sortedByDescending { it.time } ?: emptyList())
         }
     }
 

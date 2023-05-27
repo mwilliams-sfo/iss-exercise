@@ -19,6 +19,7 @@
                 android:id="@+id/nadir_label"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_gravity="center"
                 android:text="@string/distance_to_nadir"
                 style="@style/TextAppearance.Material3.LabelLarge"/>
 
@@ -27,9 +28,20 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
+                android:layout_gravity="center"
                 android:gravity="end"
                 tools:text="@string/no_data"
                 style="@style/TextAppearance.AppCompat.Body1"/>
+
+
+            <androidx.appcompat.widget.AppCompatImageButton
+                android:id="@+id/show_on_map"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:backgroundTint="@color/design_default_color_surface"
+                android:src="@drawable/baseline_pin_drop_48"
+                android:contentDescription="@string/show_on_map" />
         </androidx.appcompat.widget.LinearLayoutCompat>
 
         <com.google.android.material.divider.MaterialDivider
@@ -51,5 +63,9 @@
             android:paddingHorizontal="8dp"
             android:paddingBottom="8dp"
             tools:listitem="@android:layout/simple_list_item_1"/>
+
+        <com.google.android.material.divider.MaterialDivider
+            android:layout_width="match_parent"
+            android:layout_height="2dp" />
     </androidx.appcompat.widget.LinearLayoutCompat>
 </androidx.core.widget.NestedScrollView>

@@ -2,8 +2,11 @@ package com.example.iss.ui
 
 import android.Manifest.permission.ACCESS_COARSE_LOCATION
 import android.Manifest.permission.ACCESS_FINE_LOCATION
+import android.content.Intent
 import android.content.pm.PackageManager.PERMISSION_GRANTED
+import android.location.Location
 import android.location.LocationManager
+import android.net.Uri
 import android.os.Bundle
 import android.os.Looper
 import android.widget.TextView
@@ -11,6 +14,7 @@ import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.widget.AppCompatImageButton
 import androidx.core.app.ActivityCompat.checkSelfPermission
 import androidx.core.location.LocationManagerCompat
 import androidx.core.location.LocationRequestCompat
@@ -38,12 +42,18 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+
         lifecycle.addObserver(viewModel)
 
         permissionRequest = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {}
         locationManager = getSystemService(LOCATION_SERVICE) as? LocationManager
 
         viewModel.nadirDistance.observe(this, ::updateNadirDistance)
+        val mapButton = findViewById<AppCompatImageButton>(R.id.show_on_map)
+        viewModel.issPosition.observe(this) { location -> mapButton.isEnabled = (location != null) }
+        mapButton.setOnClickListener {
+            viewModel.issPosition.value?.let { showLocationOnMap(it, getString(R.string.iss_map_label)) }
+        }
 
         val astronautAdapter = StringArrayAdapter()
         val astronautList = findViewById<RecyclerView>(R.id.astronaut_list)
@@ -78,6 +88,17 @@ class MainActivity : AppCompatActivity() {
             val distanceInKm = (distance / 1000).roundToInt()
             nadirValueView.text = getString(R.string.distance_km, distanceInKm)
         }
+    }
+
+    private fun showLocationOnMap(location: Location, label: String) {
+        val intent = Intent(
+            Intent.ACTION_VIEW,
+            Uri.parse("geo:0,0").buildUpon()
+                .appendQueryParameter("q", "${location.latitude},${location.longitude}($label)")
+                .build()
+        )
+        if (intent.resolveActivity(packageManager) == null) return
+        startActivity(intent)
     }
 
     private fun startLocationUpdates() {

@@ -23,13 +23,13 @@ class MainViewModel(
     private val _gpsLocation = MutableLiveData<Location>()
     internal val gpsLocation = liveData { emitSource(_gpsLocation) }
 
-    internal val issLocation = liveData {pollIssLocation() }
+    val issPosition = liveData {pollIssLocation() }
 
     private val _nadirDistance = MediatorLiveData<Float>().apply {
         addSource(gpsLocation) { gpsLocation ->
-            value = locationsDistance(gpsLocation, issLocation.value)
+            value = locationsDistance(gpsLocation, issPosition.value)
         }
-        addSource(issLocation) { issLocation ->
+        addSource(issPosition) { issLocation ->
             value = locationsDistance(gpsLocation.value, issLocation)
         }
     }

@@ -9,6 +9,7 @@ import android.location.LocationManager
 import android.net.Uri
 import android.os.Bundle
 import android.os.Looper
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
@@ -24,6 +25,7 @@ import androidx.room.Room
 import com.example.iss.R
 import com.example.iss.api.iss.ISSApi
 import com.example.iss.databinding.ActivityMainBinding
+import com.example.iss.databinding.ActivityMainBinding.inflate
 import com.example.iss.db.AppDatabase
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
@@ -52,18 +54,16 @@ class MainActivity : AppCompatActivity() {
         ).build()
     }
 
-    private val viewModel: MainViewModel by viewModels {
-        MainViewModel.Factory(issApi, database)
-    }
-
     private lateinit var binding: ActivityMainBinding
+    private val viewModel: MainViewModel by viewModels { MainViewModel.Factory(issApi, database) }
+
     private lateinit var permissionRequest: ActivityResultLauncher<Array<String>>
     private lateinit var locationManager: LocationManager
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        binding = ActivityMainBinding.inflate(layoutInflater)
-            .also { setContentView(it.root) }
+        binding = inflate(layoutInflater)
+        setContentView(binding.root)
         lifecycle.addObserver(viewModel)
         initGpsUpdates()
         initNadir()
@@ -77,7 +77,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun initGpsUpdates() {
-        permissionRequest = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {}
+        permissionRequest = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { result ->
+            result.entries.asSequence()
+                .filterNot { it.value }
+                .forEach { entry -> Log.w(TAG, "Permission denied: ${entry.key}") }
+        }
         locationManager = getSystemService(LOCATION_SERVICE) as? LocationManager ?: return
         lifecycle.addObserver(
             LifecycleEventObserver { _, event ->
@@ -156,9 +160,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun startLocationUpdates() {
-        val permissions = arrayOf(ACCESS_COARSE_LOCATION, ACCESS_FINE_LOCATION)
-        if (permissions.any { permission -> checkSelfPermission(this, permission) != PERMISSION_GRANTED }) {
-            permissionRequest.launch(permissions)
+        if (gpsPermissions.any { permission -> checkSelfPermission(this, permission) != PERMISSION_GRANTED }) {
+            permissionRequest.launch(gpsPermissions)
         } else {
             LocationManagerCompat.requestLocationUpdates(
                 locationManager,
@@ -171,10 +174,14 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun stopLocationUpdates() {
-        val permissions = arrayOf(ACCESS_COARSE_LOCATION, ACCESS_FINE_LOCATION)
-        if (permissions.any { permission -> checkSelfPermission(this, permission) != PERMISSION_GRANTED }) {
+        if (gpsPermissions.any { permission -> checkSelfPermission(this, permission) != PERMISSION_GRANTED }) {
             return
         }
         LocationManagerCompat.removeUpdates(locationManager, viewModel)
+    }
+
+    companion object {
+        private const val TAG = "MainActivity"
+        private val gpsPermissions = arrayOf(ACCESS_COARSE_LOCATION, ACCESS_FINE_LOCATION)
     }
 }

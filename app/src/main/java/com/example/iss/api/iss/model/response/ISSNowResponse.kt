@@ -7,7 +7,7 @@ import com.google.gson.annotations.SerializedName
 @Keep
 data class ISSNowResponse(
     val message: String,
+    val timestamp: Long,
     @SerializedName("iss_position")
-    val issPosition: Position,
-    val timestamp: Long
+    val issPosition: Position
 )

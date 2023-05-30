@@ -30,11 +30,18 @@ import retrofit2.converter.gson.GsonConverterFactory
 import java.time.Clock
 import java.time.Instant
 import java.time.ZoneId
+import java.time.ZoneOffset
 import kotlin.math.roundToInt
+
+private const val geoUriOrigin = "geo:0,0"
+private const val gpsSamplingInterval = 5000L
+private const val issApiBaseUrl = "http://api.open-notify.org/"
+private const val appDatabaseName = "app.db"
+private val logTimeZone = ZoneId.ofOffset("GMT", ZoneOffset.ofHours(-5))
 
 class MainActivity : AppCompatActivity() {
     private val issApi = Retrofit.Builder()
-        .baseUrl("http://api.open-notify.org/")
+        .baseUrl(issApiBaseUrl)
         .addConverterFactory(GsonConverterFactory.create())
         .build()
         .create(ISSApi::class.java)
@@ -43,7 +50,7 @@ class MainActivity : AppCompatActivity() {
         Room.databaseBuilder(
             context = applicationContext,
             klass = AppDatabase::class.java,
-            name = "app.db"
+            name = appDatabaseName
         ).build()
     }
 
@@ -86,9 +93,7 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        val logAdapter = PositionLogAdapter(
-            timeZone = ZoneId.of("America/New_York").rules.getStandardOffset(Instant.now())
-        )
+        val logAdapter = PositionLogAdapter(timeZone = logTimeZone)
         val positionLog = findViewById<RecyclerView>(R.id.position_log)
         positionLog.run {
             layoutManager = LinearLayoutManager(this@MainActivity)
@@ -122,7 +127,7 @@ class MainActivity : AppCompatActivity() {
     private fun showLocationOnMap(location: Location, label: String) {
         val intent = Intent(
             Intent.ACTION_VIEW,
-            Uri.parse("geo:0,0").buildUpon()
+            Uri.parse(geoUriOrigin).buildUpon()
                 .appendQueryParameter("q", "${location.latitude},${location.longitude}($label)")
                 .build()
         )
@@ -144,7 +149,7 @@ class MainActivity : AppCompatActivity() {
             LocationManagerCompat.requestLocationUpdates(
                 locationManager,
                 LocationManager.GPS_PROVIDER,
-                LocationRequestCompat.Builder(5000L).build(),
+                LocationRequestCompat.Builder(gpsSamplingInterval).build(),
                 viewModel,
                 Looper.getMainLooper()
             )

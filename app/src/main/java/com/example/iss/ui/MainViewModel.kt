@@ -21,6 +21,9 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import com.example.iss.db.entity.Position as DBPosition
 
+private const val issPositionPollingInterval = 5000L
+private const val issCraftName = "ISS"
+
 class MainViewModel(
     private val issApi: ISSApi,
     private val database: AppDatabase
@@ -74,9 +77,24 @@ class MainViewModel(
                     Log.e(TAG, "ISS position request failed", ex)
                 }
             }
-            delay(5000L)
+            delay(issPositionPollingInterval)
         }
     }
+
+    private fun locationsDistance(location1: Location?, location2: Location?): Float? {
+        if (location1 == null || location2 == null) return null
+        return location1.distanceTo(location2)
+    }
+
+    private suspend fun getAstronautNames() =
+        try {
+            issApi.astros().people
+                .filter { it.craft == issCraftName }
+                .map { it.name }
+        } catch (ex: Exception) {
+            Log.e(TAG, "Astronaut request failed", ex)
+            null
+        }
 
     private fun logIssPosition(response: ISSNowResponse) {
         viewModelScope.launch(Dispatchers.IO) {
@@ -90,21 +108,6 @@ class MainViewModel(
             )
         }
     }
-
-    private fun locationsDistance(location1: Location?, location2: Location?): Float? {
-        if (location1 == null || location2 == null) return null
-        return location1.distanceTo(location2)
-    }
-
-    private suspend fun getAstronautNames() =
-        try {
-            issApi.astros().people
-                .filter { it.craft == "ISS" }
-                .map { it.name }
-        } catch (ex: Exception) {
-            Log.e(TAG, "Astronaut request failed", ex)
-            null
-        }
 
     class Factory(
         private val issApi: ISSApi,

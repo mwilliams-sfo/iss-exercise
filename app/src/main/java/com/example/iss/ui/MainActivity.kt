@@ -58,7 +58,7 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
     private lateinit var permissionRequest: ActivityResultLauncher<Array<String>>
-    private var locationManager: LocationManager? = null
+    private lateinit var locationManager: LocationManager
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -72,9 +72,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun initGpsUpdates() {
-        permissionRequest =
-            registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {}
-        locationManager = getSystemService(LOCATION_SERVICE) as? LocationManager
+        permissionRequest = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {}
+        locationManager = getSystemService(LOCATION_SERVICE) as? LocationManager ?: return
         lifecycle.addObserver(
             LifecycleEventObserver { _, event ->
                 if (event.targetState >= Lifecycle.State.RESUMED) {
@@ -148,15 +147,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun startLocationUpdates() {
-        val locationManager = locationManager ?: return
-        if (checkSelfPermission(this, ACCESS_COARSE_LOCATION) != PERMISSION_GRANTED ||
-            checkSelfPermission(this, ACCESS_FINE_LOCATION) != PERMISSION_GRANTED) {
-            permissionRequest.launch(
-                arrayOf(
-                    ACCESS_COARSE_LOCATION,
-                    ACCESS_FINE_LOCATION
-                )
-            )
+        val permissions = arrayOf(ACCESS_COARSE_LOCATION, ACCESS_FINE_LOCATION)
+        if (permissions.any { permission -> checkSelfPermission(this, permission) != PERMISSION_GRANTED }) {
+            permissionRequest.launch(permissions)
         } else {
             LocationManagerCompat.requestLocationUpdates(
                 locationManager,
@@ -169,9 +162,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun stopLocationUpdates() {
-        val locationManager = locationManager ?: return
-        if (checkSelfPermission(this, ACCESS_COARSE_LOCATION) != PERMISSION_GRANTED ||
-            checkSelfPermission(this, ACCESS_FINE_LOCATION) != PERMISSION_GRANTED) {
+        val permissions = arrayOf(ACCESS_COARSE_LOCATION, ACCESS_FINE_LOCATION)
+        if (permissions.any { permission -> checkSelfPermission(this, permission) != PERMISSION_GRANTED }) {
             return
         }
         LocationManagerCompat.removeUpdates(locationManager, viewModel)

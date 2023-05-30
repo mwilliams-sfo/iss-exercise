@@ -17,6 +17,8 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat.checkSelfPermission
 import androidx.core.location.LocationManagerCompat
 import androidx.core.location.LocationRequestCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.room.Room
 import com.example.iss.R
@@ -64,6 +66,15 @@ class MainActivity : AppCompatActivity() {
             .also { setContentView(it.root) }
 
         lifecycle.addObserver(viewModel)
+        lifecycle.addObserver(
+            LifecycleEventObserver { _, event ->
+                if (event.targetState >= Lifecycle.State.RESUMED) {
+                    startLocationUpdates()
+                } else {
+                    stopLocationUpdates()
+                }
+            }
+        )
 
         permissionRequest = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {}
         locationManager = getSystemService(LOCATION_SERVICE) as? LocationManager
@@ -97,16 +108,6 @@ class MainActivity : AppCompatActivity() {
             layoutManager = LinearLayoutManager(this@MainActivity)
             adapter = logAdapter
         }
-    }
-
-    override fun onResume() {
-        super.onResume()
-        startLocationUpdates()
-    }
-
-    override fun onPause() {
-        super.onPause()
-        stopLocationUpdates()
     }
 
     private fun updateNadirDistance(distance: Float?) {

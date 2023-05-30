@@ -64,8 +64,17 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
             .also { setContentView(it.root) }
-
         lifecycle.addObserver(viewModel)
+        initGpsUpdates()
+        initNadir()
+        initAstronautList()
+        initPositionLog()
+    }
+
+    private fun initGpsUpdates() {
+        permissionRequest =
+            registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {}
+        locationManager = getSystemService(LOCATION_SERVICE) as? LocationManager
         lifecycle.addObserver(
             LifecycleEventObserver { _, event ->
                 if (event.targetState >= Lifecycle.State.RESUMED) {
@@ -75,18 +84,24 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         )
+    }
 
-        permissionRequest = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {}
-        locationManager = getSystemService(LOCATION_SERVICE) as? LocationManager
-
+    private fun initNadir() {
         viewModel.nadirDistance.observe(this, ::updateNadirDistance)
         viewModel.issPosition.observe(this) { position ->
             binding.showOnMap.isEnabled = (position != null)
         }
         binding.showOnMap.setOnClickListener {
-            viewModel.issPosition.value?.let { showLocationOnMap(it, getString(R.string.iss_map_label)) }
+            viewModel.issPosition.value?.let {
+                showLocationOnMap(
+                    it,
+                    getString(R.string.iss_map_label)
+                )
+            }
         }
+    }
 
+    private fun initAstronautList() {
         val astronautAdapter = StringArrayAdapter()
         viewModel.astronauts.observe(this) { names ->
             if (names.isNullOrEmpty()) {
@@ -99,7 +114,9 @@ class MainActivity : AppCompatActivity() {
             layoutManager = LinearLayoutManager(this@MainActivity)
             adapter = astronautAdapter
         }
+    }
 
+    private fun initPositionLog() {
         val logAdapter = PositionLogAdapter(timeZone = logTimeZone)
         viewModel.positionLog.observe(this) { positions ->
             logAdapter.update(positions?.sortedByDescending { it.time } ?: emptyList())

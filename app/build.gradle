@@ -31,8 +31,8 @@ android {
     kotlinOptions {
         jvmTarget = '11'
     }
-    composeOptions {
-        kotlinCompilerExtensionVersion '1.4.0'
+    buildFeatures {
+        viewBinding = true
     }
     packagingOptions {
         resources {

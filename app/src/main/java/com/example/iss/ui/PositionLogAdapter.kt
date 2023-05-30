@@ -5,8 +5,8 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 import com.example.iss.R
+import com.example.iss.databinding.ItemPositionLogBinding
 import com.example.iss.db.entity.Position
-import com.google.android.material.textview.MaterialTextView
 import java.time.Instant
 import java.time.ZoneId
 import java.time.ZonedDateTime
@@ -30,8 +30,8 @@ class PositionLogAdapter(
         val item: Position = items[position]
         val instant = Instant.ofEpochSecond(item.time)
         val localTime = ZonedDateTime.ofInstant(instant, timeZone).toLocalDateTime()
-        holder.timestamp.text = DateTimeFormatter.ISO_LOCAL_DATE_TIME.format(localTime)
-        holder.position.text =holder.itemView.context.getString(R.string.coordinates, item.latitude, item.longitude)
+        holder.binding.logTimestamp.text = DateTimeFormatter.ISO_LOCAL_DATE_TIME.format(localTime)
+        holder.binding.logPosition.text =holder.itemView.context.getString(R.string.coordinates, item.latitude, item.longitude)
     }
 
     fun update(items: List<Position>) {
@@ -46,7 +46,6 @@ class PositionLogAdapter(
     }
 
     class ViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
-        val timestamp: MaterialTextView = itemView.findViewById<MaterialTextView>(R.id.log_timestamp)
-        val position: MaterialTextView = itemView.findViewById<MaterialTextView>(R.id.log_position)
+        val binding = ItemPositionLogBinding.bind(itemView)
     }
 }

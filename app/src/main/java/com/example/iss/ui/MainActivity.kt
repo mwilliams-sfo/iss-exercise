@@ -9,7 +9,7 @@ import android.location.LocationManager
 import android.net.Uri
 import android.os.Bundle
 import android.os.Looper
-import android.widget.TextView
+import android.widget.Toast
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
@@ -142,7 +142,11 @@ class MainActivity : AppCompatActivity() {
                 .appendQueryParameter("q", "${location.latitude},${location.longitude}($label)")
                 .build()
         )
-        if (intent.resolveActivity(packageManager) == null) return
+        if (intent.resolveActivity(packageManager) == null) {
+            Toast.makeText(this, "No map application was found.", Toast.LENGTH_LONG)
+                .show()
+            return
+        }
         startActivity(intent)
     }
 

@@ -7,7 +7,10 @@ import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 
 class StringArrayAdapter : RecyclerView.Adapter<StringArrayAdapter.ViewHolder>() {
-    private val items = mutableListOf<String>()
+    private var _items = mutableListOf<String>()
+    var items: List<String>
+        get() = _items
+        set(value) = updateItems(value)
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder =
         ViewHolder(
@@ -23,11 +26,11 @@ class StringArrayAdapter : RecyclerView.Adapter<StringArrayAdapter.ViewHolder>()
         textView.text = items[position]
     }
 
-    fun update(items: List<String>) {
-        val formerSize = this.items.size
-        this.items.clear()
+    private fun updateItems(items: List<String>) {
+        val formerSize = _items.size
+        _items.clear()
         notifyItemRangeRemoved(0, formerSize)
-        this.items.addAll(items)
+        _items.addAll(items)
         notifyItemRangeInserted(0, this.items.size)
     }
 

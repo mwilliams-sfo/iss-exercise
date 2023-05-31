@@ -36,12 +36,14 @@ import retrofit2.converter.gson.GsonConverterFactory
 import java.time.ZoneId
 import java.time.ZoneOffset
 import kotlin.math.roundToInt
+import kotlin.time.DurationUnit.MILLISECONDS
+import kotlin.time.toDuration
 
 private const val geoUriOrigin = "geo:0,0"
-private const val locationUpdateInterval = 5000L
+private val locationUpdateInterval = 5000L.toDuration(MILLISECONDS)
 private const val issApiBaseUrl = "http://api.open-notify.org/"
 private const val appDatabaseName = "app.db"
-private val logTimeZone = ZoneId.ofOffset("GMT", ZoneOffset.ofHours(-5))
+private val logTimeZone = ZoneId.ofOffset("UTC", ZoneOffset.ofHours(-5))
 
 class MainActivity : AppCompatActivity() {
     private val issApi = Retrofit.Builder()
@@ -89,10 +91,10 @@ class MainActivity : AppCompatActivity() {
         locationManager = getSystemService(LOCATION_SERVICE) as? LocationManager ?: return
         lifecycle.addObserver(
             LifecycleEventObserver { _, event ->
-                if (event.targetState >= Lifecycle.State.RESUMED) {
-                    startLocationUpdates()
-                } else {
-                    stopLocationUpdates()
+                when (event) {
+                    Lifecycle.Event.upTo(Lifecycle.State.RESUMED) -> startLocationUpdates()
+                    Lifecycle.Event.downFrom(Lifecycle.State.RESUMED) -> stopLocationUpdates()
+                    else -> Unit
                 }
             }
         )
@@ -104,28 +106,23 @@ class MainActivity : AppCompatActivity() {
             binding.showOnMap.isEnabled = (position != null)
         }
         binding.showOnMap.setOnClickListener {
-            viewModel.issPosition.value?.let {
-                showLocationOnMap(
-                    it,
-                    getString(R.string.iss_map_label)
-                )
-            }
+            val position = viewModel.issPosition.value ?: return@setOnClickListener
+            showLocationOnMap(
+                location = position,
+                label = getString(R.string.iss_map_label)
+            )
         }
         lifecycle.addObserver(
             LifecycleEventObserver { _, event ->
-                when {
-                    issPositionUpdate == null && event.targetState >= Lifecycle.State.RESUMED -> {
-                        issPositionUpdate = lifecycleScope.launch {
-                            while (true) {
-                                viewModel.updateIssPosition()
-                                delay(locationUpdateInterval)
-                            }
-                        }
+                when (event) {
+                    Lifecycle.Event.upTo(Lifecycle.State.RESUMED) -> {
+                        issPositionUpdate = lifecycleScope.launch { pollIssPosition() }
                     }
-                    event.targetState < Lifecycle.State.RESUMED -> {
+                    Lifecycle.Event.downFrom(Lifecycle.State.RESUMED) -> {
                         issPositionUpdate?.cancel()
                         issPositionUpdate = null
                     }
+                    else -> Unit
                 }
             }
         )
@@ -133,20 +130,17 @@ class MainActivity : AppCompatActivity() {
 
     private fun initAstronautList() {
         val astronautAdapter = StringArrayAdapter()
-        viewModel.astronautNames.observe(this) { names ->
-            if (names.isNullOrEmpty()) {
-                astronautAdapter.update(listOf(getString(R.string.astronauts_unavailable)))
-            } else {
-                astronautAdapter.update(names)
-            }
-        }
         binding.astronautList.run {
             layoutManager = LinearLayoutManager(this@MainActivity)
             adapter = astronautAdapter
         }
+        viewModel.astronautNames.observe(this) { names ->
+            astronautAdapter.items = names.takeIf { it.isNotEmpty() }
+                ?: listOf(getString(R.string.astronauts_unavailable))
+        }
         lifecycle.addObserver(
             LifecycleEventObserver { _, event ->
-                if (event == Lifecycle.Event.ON_RESUME) {
+                if (event == Lifecycle.Event.upTo(Lifecycle.State.RESUMED)) {
                     lifecycleScope.launch { viewModel.updateAstronautNames() }
                 }
             }
@@ -155,12 +149,12 @@ class MainActivity : AppCompatActivity() {
 
     private fun initPositionLog() {
         val logAdapter = PositionLogAdapter(timeZone = logTimeZone)
-        viewModel.positionLog.observe(this) { positions ->
-            logAdapter.update(positions?.sortedByDescending { it.time } ?: emptyList())
-        }
         binding.positionLog.run {
             layoutManager = LinearLayoutManager(this@MainActivity)
             adapter = logAdapter
+        }
+        viewModel.positionLog.observe(this) { positions ->
+            logAdapter.update(items = positions?.sortedByDescending { it.time } ?: emptyList())
         }
     }
 
@@ -181,7 +175,7 @@ class MainActivity : AppCompatActivity() {
                 .build()
         )
         if (intent.resolveActivity(packageManager) == null) {
-            Toast.makeText(this, "No map application was found.", Toast.LENGTH_LONG)
+            Toast.makeText(this, getString(R.string.no_map_application), Toast.LENGTH_LONG)
                 .show()
             return
         }
@@ -195,7 +189,7 @@ class MainActivity : AppCompatActivity() {
             LocationManagerCompat.requestLocationUpdates(
                 locationManager,
                 LocationManager.GPS_PROVIDER,
-                LocationRequestCompat.Builder(locationUpdateInterval).build(),
+                LocationRequestCompat.Builder(locationUpdateInterval.toLong(MILLISECONDS)).build(),
                 viewModel,
                 Looper.getMainLooper()
             )
@@ -207,6 +201,13 @@ class MainActivity : AppCompatActivity() {
             return
         }
         LocationManagerCompat.removeUpdates(locationManager, viewModel)
+    }
+
+    private suspend fun pollIssPosition() {
+        while (true) {
+            viewModel.updateIssPosition()
+            delay(locationUpdateInterval)
+        }
     }
 
     companion object {

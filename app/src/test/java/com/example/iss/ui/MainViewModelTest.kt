@@ -163,8 +163,8 @@ class MainViewModelTest {
             message = "success",
             number = 2,
             people = listOf(
-                Person("Skylab", "Neil Armstrong"),
-                Person("ISS", "Buzz Lightyear")
+                Person(craft = "Skylab", name = "Neil Armstrong"),
+                Person(craft = "ISS", name = "Buzz Lightyear")
             )
         )
         viewModel.astronautNames.observeForever {}

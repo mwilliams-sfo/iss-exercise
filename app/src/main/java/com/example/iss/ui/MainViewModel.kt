@@ -3,10 +3,6 @@ package com.example.iss.ui
 import android.location.Location
 import android.util.Log
 import androidx.core.location.LocationListenerCompat
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
-import androidx.lifecycle.LifecycleOwner
-import androidx.lifecycle.LiveDataScope
 import androidx.lifecycle.MediatorLiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
@@ -17,24 +13,23 @@ import com.example.iss.api.iss.ISSApi
 import com.example.iss.api.iss.model.response.ISSNowResponse
 import com.example.iss.db.AppDatabase
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import com.example.iss.db.entity.Position as DBPosition
 
-private const val issPositionPollingInterval = 5000L
 private const val issCraftName = "ISS"
 
 class MainViewModel(
     private val issApi: ISSApi,
     private val database: AppDatabase
-) : ViewModel(), LifecycleEventObserver, LocationListenerCompat {
+) : ViewModel(), LocationListenerCompat {
     private val locationDao = database.positionDao()
-    private var resumed = false
 
     private val _gpsLocation = MutableLiveData<Location>()
     internal val gpsLocation = liveData { emitSource(_gpsLocation) }
 
-    val issPosition = liveData { pollIssPosition() }
+    private val _issPosition = MutableLiveData<Location>()
+    val issPosition = liveData { emitSource(_issPosition) }
 
     private val _nadirDistance = MediatorLiveData<Float>().apply {
         addSource(gpsLocation) { gpsLocation ->
@@ -46,38 +41,27 @@ class MainViewModel(
     }
     val nadirDistance = liveData { emitSource(_nadirDistance) }
 
-    val astronauts = liveData {
-        val names = getAstronautNames()
-        emit(names)
-    }
+    private val _astronautNames = MutableLiveData<List<String>>()
+    val astronautNames = liveData { emitSource(_astronautNames) }
 
     val positionLog = locationDao.getAll()
-
-    override fun onStateChanged(source: LifecycleOwner, event: Lifecycle.Event) {
-        resumed = (source.lifecycle.currentState >= Lifecycle.State.RESUMED)
-    }
 
     override fun onLocationChanged(location: Location) {
         _gpsLocation.value = location
     }
 
-    private suspend fun LiveDataScope<Location>.pollIssPosition() {
-        while (true) {
-            if (resumed) {
-                try {
-                    val issNow = issApi.issNow()
-                    emit(
-                        Location("").apply {
-                            latitude = issNow.issPosition.latitude
-                            longitude = issNow.issPosition.longitude
-                        }
-                    )
-                    logIssPosition(issNow)
-                } catch (ex: Exception) {
-                    Log.e(TAG, "ISS position request failed", ex)
+    suspend fun updateIssPosition() {
+        withContext(Dispatchers.Main) {
+            try {
+                val response = issApi.issNow()
+                _issPosition.value = Location("").apply {
+                    latitude = response.issPosition.latitude
+                    longitude = response.issPosition.longitude
                 }
+                logIssPosition(response)
+            } catch (ex: Exception) {
+                Log.e(TAG, "ISS position request failed", ex)
             }
-            delay(issPositionPollingInterval)
         }
     }
 
@@ -86,15 +70,17 @@ class MainViewModel(
         return location1.distanceTo(location2)
     }
 
-    private suspend fun getAstronautNames() =
-        try {
-            issApi.astros().people
-                .filter { it.craft == issCraftName }
-                .map { it.name }
-        } catch (ex: Exception) {
-            Log.e(TAG, "Astronaut request failed", ex)
-            null
+    suspend fun updateAstronautNames() {
+        withContext(Dispatchers.Main) {
+            try {
+                _astronautNames.value = issApi.astros().people
+                    .filter { it.craft == issCraftName }
+                    .map { it.name }
+            } catch (ex: Exception) {
+                Log.e(TAG, "ISS astronauts request failed", ex)
+            }
         }
+    }
 
     private fun logIssPosition(response: ISSNowResponse) {
         viewModelScope.launch(Dispatchers.IO) {

@@ -20,6 +20,7 @@ import androidx.core.location.LocationManagerCompat
 import androidx.core.location.LocationRequestCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.room.Room
 import com.example.iss.R
@@ -27,6 +28,9 @@ import com.example.iss.api.iss.ISSApi
 import com.example.iss.databinding.ActivityMainBinding
 import com.example.iss.databinding.ActivityMainBinding.inflate
 import com.example.iss.db.AppDatabase
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import java.time.ZoneId
@@ -34,7 +38,7 @@ import java.time.ZoneOffset
 import kotlin.math.roundToInt
 
 private const val geoUriOrigin = "geo:0,0"
-private const val gpsSamplingInterval = 5000L
+private const val locationUpdateInterval = 5000L
 private const val issApiBaseUrl = "http://api.open-notify.org/"
 private const val appDatabaseName = "app.db"
 private val logTimeZone = ZoneId.ofOffset("GMT", ZoneOffset.ofHours(-5))
@@ -56,6 +60,7 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
     private val viewModel: MainViewModel by viewModels { MainViewModel.Factory(issApi, database) }
+    private var issPositionUpdate: Job? = null
 
     private lateinit var permissionRequest: ActivityResultLauncher<Array<String>>
     private lateinit var locationManager: LocationManager
@@ -64,7 +69,6 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = inflate(layoutInflater)
         setContentView(binding.root)
-        lifecycle.addObserver(viewModel)
         initGpsUpdates()
         initNadir()
         initAstronautList()
@@ -107,11 +111,29 @@ class MainActivity : AppCompatActivity() {
                 )
             }
         }
+        lifecycle.addObserver(
+            LifecycleEventObserver { _, event ->
+                when {
+                    issPositionUpdate == null && event.targetState >= Lifecycle.State.RESUMED -> {
+                        issPositionUpdate = lifecycleScope.launch {
+                            while (true) {
+                                viewModel.updateIssPosition()
+                                delay(locationUpdateInterval)
+                            }
+                        }
+                    }
+                    event.targetState < Lifecycle.State.RESUMED -> {
+                        issPositionUpdate?.cancel()
+                        issPositionUpdate = null
+                    }
+                }
+            }
+        )
     }
 
     private fun initAstronautList() {
         val astronautAdapter = StringArrayAdapter()
-        viewModel.astronauts.observe(this) { names ->
+        viewModel.astronautNames.observe(this) { names ->
             if (names.isNullOrEmpty()) {
                 astronautAdapter.update(listOf(getString(R.string.astronauts_unavailable)))
             } else {
@@ -122,6 +144,13 @@ class MainActivity : AppCompatActivity() {
             layoutManager = LinearLayoutManager(this@MainActivity)
             adapter = astronautAdapter
         }
+        lifecycle.addObserver(
+            LifecycleEventObserver { _, event ->
+                if (event == Lifecycle.Event.ON_RESUME) {
+                    lifecycleScope.launch { viewModel.updateAstronautNames() }
+                }
+            }
+        )
     }
 
     private fun initPositionLog() {
@@ -166,7 +195,7 @@ class MainActivity : AppCompatActivity() {
             LocationManagerCompat.requestLocationUpdates(
                 locationManager,
                 LocationManager.GPS_PROVIDER,
-                LocationRequestCompat.Builder(gpsSamplingInterval).build(),
+                LocationRequestCompat.Builder(locationUpdateInterval).build(),
                 viewModel,
                 Looper.getMainLooper()
             )

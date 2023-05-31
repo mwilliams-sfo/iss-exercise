@@ -73,9 +73,10 @@ class MainViewModel(
     suspend fun updateAstronautNames() {
         withContext(Dispatchers.Main) {
             try {
-                _astronautNames.value = issApi.astros().people
+                _astronautNames.value = issApi.astros().people.asSequence()
                     .filter { it.craft == issCraftName }
                     .map { it.name }
+                    .toList()
             } catch (ex: Exception) {
                 Log.e(TAG, "ISS astronauts request failed", ex)
             }
@@ -86,7 +87,6 @@ class MainViewModel(
         viewModelScope.launch(Dispatchers.IO) {
             database.positionDao().insert(
                 DBPosition(
-                    id = 0,
                     time = response.timestamp,
                     latitude = response.issPosition.latitude,
                     longitude = response.issPosition.longitude

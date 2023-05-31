@@ -3,6 +3,8 @@ package com.example.iss.ui
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.recyclerview.widget.AsyncListDiffer
+import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
 import com.example.iss.R
 import com.example.iss.databinding.ItemPositionLogBinding.bind
@@ -15,7 +17,13 @@ import java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME
 class PositionLogAdapter(
     private val timeZone: ZoneId
 ) : RecyclerView.Adapter<PositionLogAdapter.ViewHolder>() {
-    private val items = mutableListOf<Position>()
+    private val differ = AsyncListDiffer(this, object: DiffUtil.ItemCallback<Position>() {
+        override fun areItemsTheSame(oldItem: Position, newItem: Position): Boolean =
+            oldItem.id == newItem.id
+
+        override fun areContentsTheSame(oldItem: Position, newItem: Position): Boolean =
+            oldItem == newItem
+    })
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder =
         ViewHolder(
@@ -24,10 +32,10 @@ class PositionLogAdapter(
         )
 
     override fun getItemCount(): Int =
-        items.size
+        differ.currentList.size
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
-        val item = items[position]
+        val item = differ.currentList[position]
         val instant = Instant.ofEpochSecond(item.time)
         val localTime = ZonedDateTime.ofInstant(instant, timeZone).toLocalDateTime()
         holder.binding.logTimestamp.text = ISO_LOCAL_DATE_TIME.format(localTime)
@@ -35,14 +43,7 @@ class PositionLogAdapter(
     }
 
     fun update(items: List<Position>) {
-        val formerSize = this.items.size
-        this.items.run {
-            clear()
-            addAll(items)
-        }
-        notifyItemRangeChanged(0, minOf(formerSize, items.size))
-        notifyItemRangeInserted(formerSize, maxOf(0, items.size - formerSize))
-        notifyItemRangeRemoved(items.size, maxOf(0, formerSize - items.size))
+        differ.submitList(items)
     }
 
     class ViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {

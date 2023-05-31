@@ -25,13 +25,10 @@ class StringArrayAdapter : RecyclerView.Adapter<StringArrayAdapter.ViewHolder>()
 
     fun update(items: List<String>) {
         val formerSize = this.items.size
-        this.items.run {
-            clear()
-            addAll(items)
-        }
-        notifyItemRangeChanged(0, minOf(formerSize, items.size))
-        notifyItemRangeInserted(formerSize, maxOf(0, items.size - formerSize))
-        notifyItemRangeRemoved(items.size, maxOf(0, formerSize - items.size))
+        this.items.clear()
+        notifyItemRangeRemoved(0, formerSize)
+        this.items.addAll(items)
+        notifyItemRangeInserted(0, this.items.size)
     }
 
     class ViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView)

@@ -39,7 +39,7 @@ class PositionLogAdapter(
         val instant = Instant.ofEpochSecond(item.time)
         val localTime = ZonedDateTime.ofInstant(instant, timeZone).toLocalDateTime()
         holder.binding.logTimestamp.text = ISO_LOCAL_DATE_TIME.format(localTime)
-        holder.binding.logPosition.text =holder.itemView.context.getString(R.string.coordinates, item.latitude, item.longitude)
+        holder.binding.logPosition.text = holder.itemView.context.getString(R.string.coordinates, item.latitude, item.longitude)
     }
 
     fun update(items: List<Position>) {

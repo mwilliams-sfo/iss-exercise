@@ -77,11 +77,6 @@ class MainActivity : AppCompatActivity() {
         initPositionLog()
     }
 
-    override fun onDestroy() {
-        super.onDestroy()
-        database.close()
-    }
-
     private fun initGpsUpdates() {
         permissionRequest = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { result ->
             result.entries.asSequence()
